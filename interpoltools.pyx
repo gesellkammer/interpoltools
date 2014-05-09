@@ -196,6 +196,16 @@ cdef _InterpolExpon _InterpolExpon_new(double expon):
     f.expon = expon
     return f
 
+cdef class interpol_halfcosexp_new:
+    cdef double exp
+    def __init__(self, double exp):
+        self.exp = exp
+    def __call__(self, double x, double x0, double y0, double x1, double y1):
+        """
+        def __call__(self, double x, double x0, double y0, double x1, double y1)
+        """
+        return _interpol_halfcosexp(x, x0, y0, x1, y1, self.exp)
+    
 def interpol_cuadratic(double x, double x0, double y0, double x1, double y1):
     """
     interpolate between (x0, y0) and (x1, y1) at point x
@@ -262,6 +272,35 @@ def array_interpol_linear(numpy.ndarray[DTYPE_t, ndim=1] xs, numpy.ndarray[DTYPE
     cdef double x0 = xs[index0]
     cdef double y0 = ys[index0]
     return y0 + (ys[index1] - y0) * ((x - x0) / (xs[index1] - x0))
+
+def getfunc(func):
+    """
+    returns a function performing the given interpolation
+
+    Example
+    =======
+
+    >>> f = getfunc("expon(2.0)")
+    >>> f(2)
+    4.0
+    """
+    if "(" in func:
+        func, exps = func.split("(")
+        exp = float(exps[:-1])
+    else:
+        exp = 1
+    case = FUNCNAME_CASE.get(func)
+    if case == 0:   # linear
+        return interpol_linear
+    elif case == 1: # halfcos
+        if exp == 1:
+            return interpol_halfcos
+        else:
+            return interpol_halfcosexp_new(exp)
+    elif case == 2: # expon
+        return interpol_expon_new(exp)
+    else:
+        raise ValueError("func not supported")
 
 def interpol_between(double a, double b, int num=50, str func='linear', endpoint=True):
     """
